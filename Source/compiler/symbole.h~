@@ -1,0 +1,22 @@
+#ifndef CACA
+# define CACA
+
+
+typedef struct{
+	char * nom;
+	int adr_mem;
+} symbole;
+
+void init_table();
+
+void add_symbole(char* n);
+
+int get_symbole(char * n, symbole** resultat);
+
+void print();
+
+
+void enlever_symbole();
+
+
+#endif

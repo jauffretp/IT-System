@@ -1,0 +1,12 @@
+#include "pile.h"
+
+void main(){
+
+	pile_s *p = pile_new();
+	pile_push(&p,3);
+	pile_push(&p,1);
+	print_pile(&p);
+
+
+
+}

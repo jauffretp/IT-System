@@ -1,0 +1,21 @@
+#ifndef JUMP
+# define JUMP
+#define JNE 1
+#define JMP 0
+
+typedef struct jmp Jump;
+
+void init_tab_jmp();
+
+void add_from(int from,int type);
+
+void remplir(int to,int *type);
+
+void print_tab();
+
+int get_to(int from,int *type);
+
+#endif
+
+
+

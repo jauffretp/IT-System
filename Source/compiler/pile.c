@@ -1,0 +1,66 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "pile.h"
+
+
+struct pile{
+	int data;
+	struct pile * precedent;
+};
+
+
+pile_s *pile_new(void){
+	return NULL;
+}
+
+void pile_push(pile_s ** stack,int data){
+
+	pile_s *new=NULL;
+	new = malloc(sizeof(pile_s));
+
+	new->data=data;
+	new->precedent=*stack;
+	*stack=new;
+	
+}
+
+int data_pile(pile_s ** stack){
+	pile_s *aux = *stack;
+	return aux->data;
+}
+
+
+int pile_pop(pile_s ** stack){
+	if( *stack!=NULL){
+		pile_s *aux = *stack;
+		pile_s *new = aux->precedent;
+		free(aux);	
+		*stack = new;
+		return 1;
+	} else{
+		return 0;
+	}
+
+}
+
+
+
+void pile_delete(pile_s ** stack){
+	while(stack != NULL){
+			pile_pop(stack);
+		}
+}
+
+void print_pile(pile_s ** stack){
+	pile_s * courant = *stack;
+	printf("***DEBUT PILE***\n");
+	while ((courant)!=NULL){
+		printf("DATA : %d\n", courant->data);
+		courant = courant->precedent;
+	}
+	printf("***FIN PILE ***\n\n");
+} 
+	
+
+
+

@@ -1,0 +1,276 @@
+%{
+#include <stdio.h>
+#include "symboles.h"
+#include <string.h>
+#include <stdlib.h>
+#include "jmp.h"
+#include <readline/readline.h>
+#include <readline/history.h>
+
+
+//%type <type> nonTerminaux
+
+void yyerror(const char *a);
+FILE * fichier= NULL;
+FILE * fichier_fin = NULL;
+int compteur =0;
+
+
+%}
+%token tMAIN tPRINTF tINT tCONST tEXP tACC_OUVR tACC_FERM tADD tSUB tMUL tDIV tEQ tPAR_OUVR tPAR_FERM tVIRG tSPACE tTAB tPOINT_VIRGULE tELSE tIF tINF tSUP tOR tAND tNOT
+%token <chaine> tID
+%token <decimal> tDECI
+%type <adresse> EXPRESSION 
+%type <adresse> DECLARATION
+%error-verbose
+%start input
+%union {char* chaine; int adresse; int decimal;}
+%%
+
+	input: DEBUT;
+	DEBUT : tMAIN {
+					init_table();
+					fichier= fopen("assembleur","w+");
+					}
+			tACC_OUVR INSTRUCTIONS tACC_FERM { 
+				compteur ++;
+				fprintf(fichier,"%d : END\n",compteur);
+				fclose(fichier);
+				fichier=fopen("assembleur","r");
+				fichier_fin=fopen("assembleur_final","w+");
+				int size = 1024;
+				char* ligne=malloc(sizeof(char)*size);
+				int compteur_ligne=1;
+				int type;
+				int to;
+				
+				while(fgets(ligne,size,fichier)!=NULL){
+					if((to=get_to(compteur_ligne,&type))==-1){
+						printf("2e passe : %d copie simple\n",compteur_ligne);
+						fputs(ligne,fichier_fin);
+					}else{
+						switch (type){
+							case JMP :
+								printf("2e passe : %d : JMP %d\n",compteur_ligne,to);
+								fputs("",fichier_fin);
+								fprintf(fichier_fin,"%d : JMP %d\n",compteur_ligne,to);	 
+								break;
+							case JNE :
+								printf("2e passe : JNE %d\n",to);
+								fputs("",fichier_fin);
+								fprintf(fichier_fin,"%d : JNE %d\n",compteur_ligne,to);
+								break;
+						}
+						
+					}
+					compteur_ligne++;
+				}
+				printf("FIN\n");};
+
+	OPERATION :  AFFECTATION
+				| DECLARATION
+				| PRINTF;
+
+
+	INSTRUCTION :OPERATION tPOINT_VIRGULE
+				|IF;
+
+	INSTRUCTIONS : INSTRUCTION INSTRUCTIONS
+        		| INSTRUCTION;
+
+	TYPE		: tINT 
+				|tCONST;
+
+	DECLARATION : TYPE tID DECLARATION2{printf("DECLARATION SIMPLE\n");}
+				| TYPE tID{
+					add_symbole($2);
+					printf("DECLARATION SIMPLE\n\n");
+					print();
+
+					$$=get_adr_mem(get_next()-1);
+				};
+
+	DECLARATION2 : tVIRG tID DECLARATION2
+				| tVIRG tID;
+	
+
+				
+	AFFECTATION : tID tEQ tDECI{
+				symbole * mon_symbole;	
+				compteur++;
+				fprintf(fichier,"%d : AFC R1 %d\n",compteur,$3);
+				compteur++;
+				fprintf(fichier,"%d : STORE %d R1\n",compteur,get_symbole($1,&mon_symbole));
+
+				}
+				|tID tEQ tID{
+				symbole * mon_symbole1;
+				symbole * mon_symbole2;
+				compteur++;
+				fprintf(fichier,"%d : LOAD R1 %d\n",compteur,get_symbole($3,&mon_symbole1));
+				compteur++;
+				fprintf(fichier,"%d : STORE %d R1\n",compteur,get_symbole($1,&mon_symbole2));}
+				| tID tEQ EXPRESSION{
+				symbole * mon_symbole;
+				compteur ++;
+				fprintf(fichier,"%d : LOAD R1 %d\n",compteur,$3);
+				compteur ++;
+				fprintf(fichier,"%d : STORE %d R1\n",compteur,get_symbole($1,&mon_symbole));
+				}
+				| DECLARATION tEQ tDECI {printf("AFFECTATION\n");
+				compteur ++;				
+				fprintf(fichier,"%d : AFC R1 %d\n",compteur,$3);	
+				compteur ++;
+				fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+
+				}
+				| DECLARATION tEQ tID{
+				symbole * mon_symbole;
+				compteur ++;
+				fprintf(fichier,"%d : LOAD R1 %d\n",compteur,get_symbole($3,&mon_symbole));
+				compteur ++;
+				fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+				}
+				| DECLARATION tEQ EXPRESSION{
+				compteur ++;
+				fprintf(fichier,"%d : LOAD R1 %d\n",compteur,$3);
+				compteur ++;
+				fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+				};
+
+
+	EXPRESSION	:	EXPRESSION tADD EXPRESSION {
+						printf("%d : LOAD R1 %d\n",compteur, $1);
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R1 %d\n",compteur, $1);
+						printf("LOAD R2 %d\n", $3);
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R2 %d\n",compteur, $3);
+						printf("ADD R1 R2 \n");
+				compteur ++;
+						fprintf(fichier,"%d : ADD R1 R2\n",compteur);
+				compteur ++;
+						fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+						enlever_symbole();			
+						print();
+						$$=$1;
+						}
+				|	EXPRESSION tSUB EXPRESSION {
+						printf("SOUSTRACTION\n");
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R1 %d\n",compteur, $1);
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R2 %d\n",compteur, $3);
+				compteur ++;
+						fprintf(fichier,"%d : SUB R1 R2\n",compteur);
+				compteur ++;
+						fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+						enlever_symbole();
+						print();
+						$$=$1;
+						}
+
+				|	EXPRESSION tMUL EXPRESSION{
+						printf("MULTIPLIER\n");
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R1 %d\n",compteur, $1);
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R2 %d\n",compteur, $3);
+				compteur ++;
+						fprintf(fichier,"%d : MUL R1 R2\n",compteur);
+				compteur ++;
+						fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+						enlever_symbole();
+						print();
+						$$=$1;
+						}
+				|	EXPRESSION tDIV EXPRESSION {
+						printf("DIVISER\n");
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R1 %d\n",compteur, $1);
+				compteur ++;
+						fprintf(fichier,"%d : LOAD R2 %d\n",compteur, $3);
+				compteur ++;
+						fprintf(fichier,"%d : MUL R1 R2\n",compteur);
+				compteur ++;
+						fprintf(fichier,"%d : STORE %d R1\n",compteur,$1);
+						enlever_symbole();
+						print();
+						$$=$1;
+						}
+				|	tPAR_OUVR EXPRESSION tPAR_FERM
+				|	tID{
+						printf("%s\n",$1);
+						symbole * mon_symbole;
+						symbole * temp;
+						add_symbole("tmp");						
+						print();
+						printf("%d : LOAD R2 %d\n",compteur,get_symbole($1,&mon_symbole));
+						compteur ++;
+						fprintf(fichier,"%d : LOAD R2 %d\n",compteur,get_symbole($1,&mon_symbole));
+						printf("STORE %d R2\n\n",get_adr_mem(get_next()-1));
+						compteur++;
+						fprintf(fichier,"%d : STORE %d R2\n",compteur,get_adr_mem(get_next()-1));
+						$$ = get_adr_mem(get_next()-1);
+						}
+				|	tDECI{
+						symbole * mon_symbole;
+						symbole * temp;
+						add_symbole("tmp");						
+						print();
+						printf("AFC R1 %d\n",$1);
+						compteur ++;
+						fprintf(fichier,"%d : AFC R1 %d\n",compteur,$1);
+						compteur ++;
+						fprintf(fichier,"%d : STORE %d R1\n",compteur, get_adr_mem(get_next()-1));
+						$$ = get_adr_mem(get_next()-1);
+						};
+	
+	PRINTF : tPRINTF tID tPAR_FERM;
+	
+	CONDITION : tPAR_OUVR EXPRESSION tSUP EXPRESSION tPAR_FERM
+				|tPAR_OUVR EXPRESSION tINF EXPRESSION tPAR_FERM
+				|tPAR_OUVR EXPRESSION tEQ tEQ EXPRESSION tPAR_FERM{
+				compteur++;
+				fprintf(fichier,"%d : LOAD R1 %d\n",compteur,$2);
+				compteur++;
+				fprintf(fichier,"%d : LOAD R2 %d\n",compteur,$5);
+				compteur++;
+				fprintf(fichier,"%d : CMP R1 R2\n",compteur);
+				};
+
+
+	CONDITIONS : CONDITION
+				|CONDITION tOR CONDITIONS
+				|CONDITION tAND CONDITIONS
+				|tNOT tPAR_OUVR CONDITIONS tPAR_FERM;
+	
+
+	//reduce reduce problem;
+	IF :tIF CONDITIONS{
+
+		compteur++;
+		add_from(compteur,JNE);
+		fprintf(fichier,"%d : JNE\n",compteur);
+		 }BODY
+		|IF{remplir(compteur+2);} tELSE{
+		compteur++;
+		add_from(compteur,JMP);
+		fprintf(fichier,"%d : JMP\n",compteur);		
+		}			
+		BODY;
+
+		
+	
+
+
+	BODY : tACC_OUVR INSTRUCTIONS tACC_FERM
+		| 	INSTRUCTION;
+	
+%%
+
+void yyerror(const char *a){
+	printf("%s",a);
+}
+
+

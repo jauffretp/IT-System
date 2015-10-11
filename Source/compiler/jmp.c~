@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "jmp.h"
+
+
+struct jmp{
+	int from;
+	int to;
+	int type;
+};
+
+int index_table;
+
+
+Jump tab[1024];
+
+void init_tab_jmp(){
+index_table= 0;
+}
+
+
+void add_from(int from,int type){
+	tab[index_table].from=from;
+	tab[index_table].to = -1;
+	tab[index_table].type=type;
+	index_table++;
+
+}
+
+
+void remplir(int to){
+	int i = index_table-1;
+	int trouve =0;
+	while(i>=0 && trouve==0){
+		if(tab[i].to == -1&&tab[i].type=JNE){
+			trouve=1;
+			tab[i].to=to+2;}
+		if(tab[i].to==-1 && tab[i]=JMP){
+			trouve=1;
+			tab[i].to=to+1;
+		}else{
+			i--;
+		}
+	}
+}
+
+void print_tab(){
+	int i=0;
+	printf("***DEBUT AFFICHAGE TABLE JMP***\n");
+	while(i<index_table){
+		printf("%d : %d : %d\n",tab[i].from,tab[i].to,tab[i].type);
+		i++;
+	}
+	printf("***FIN AFFICHAGE TABLE JMP***\n");
+}
+
+int get_to(int from,int *type){
+	int i = index_table-1;
+	int resultat = -1;
+	while(i>=0){
+		if(tab[i].from==from){
+			*type = tab[i].type;
+			return tab[i].to;		
+		}
+		i--;
+	}
+	return resultat;	
+}
+
+
+	
+
+
+
+
+
+
+
+
